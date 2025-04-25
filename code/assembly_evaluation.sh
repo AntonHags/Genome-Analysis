@@ -12,14 +12,14 @@
 module load bioinfo-tools
 module load quast
 
-AssemblyDir="/home/antonh/Genome-Analysis/analyses/genome_assembly"
-OutputDir="/home/antonh/Genome-Analysis/analyses/assembly_evaluation/HP126"
+AssemblyDir="/home/antonh/Genome-Analysis/analyses/genome_assembly/R7"
+OutputDir="/home/antonh/Genome-Analysis/analyses/assembly_evaluation/R7"
 
 mkdir -p "$OutputDir"
 
 AssemblyFile="$AssemblyDir"/assembly.fasta  
 
-ReferenceGenome="/proj/uppmax2025-3-3/Genome_Analysis/2_Beganovic_2023/reference_genome/HP126_genome.fasta" 
+ReferenceGenome="/proj/uppmax2025-3-3/Genome_Analysis/2_Beganovic_2023/reference_genome/R7_genome.fasta" 
 
 quast.py "$AssemblyFile" -o "$OutputDir" --threads 2 --reference "$ReferenceGenome" --fast
 
