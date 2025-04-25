@@ -13,10 +13,10 @@ module load bioinfo-tools
 module load Flye
 
 InputDir="/proj/uppmax2025-3-3/Genome_Analysis/2_Beganovic_2023/DNA_reads"
-OutputDir="/home/antonh/Genome-Analysis/analyses/genome_assembly"
+OutputDir="/home/antonh/Genome-Analysis/analyses/genome_assembly/R7"
 
 mkdir -p "$OutputDir"
 
-flye --nano-raw "$InputDir"/SRR24413066.fastq.gz \
-    --out-dir "$OutputDir" -t 2
+flye --nano-raw "$InputDir"/SRR24413072.fastq.gz \
+    --out-dir "$OutputDir" -t 2 
 
