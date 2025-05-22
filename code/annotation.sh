@@ -14,11 +14,11 @@ module load prokka
 
 WORKDIR="/home/antonh/Genome-Analysis/analyses/annotation"
 HP126_FASTA="/home/antonh/Genome-Analysis/analyses/polishing/HP126_pilon_polished.fasta"
-R7_FASTA="/home/antonh/Genome-Analysis/analyses/genome_assembly/R7/assembly.fasta"
+R7_FASTA="/home/antonh/Genome-Analysis/analyses/polishing/R7/R7_pilon_polished.fasta"
 
 mkdir -p "$WORKDIR"
 
-prokka --outdir "$WORKDIR/HP126" --prefix HP126 --cpus 2 "$HP126_FASTA"
+prokka --outdir "$WORKDIR/HP126_new" --prefix HP126 --cpus 2 "$HP126_FASTA"
 
-prokka --outdir "$WORKDIR/R7" --prefix R7 --cpus 2 "$R7_FASTA"
+prokka --outdir "$WORKDIR/R7_new" --prefix R7 --cpus 2 "$R7_FASTA"
 

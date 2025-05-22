@@ -17,25 +17,25 @@ module load samtools
 module load Pilon
 module load java
 
-WORKDIR="/home/antonh/Genome-Analysis/analyses/polishing"
-ASSEMBLY="/home/antonh/Genome-Analysis/analyses/genome_assembly/HP126/assembly.fasta"
-READ1="/proj/uppmax2025-3-3/Genome_Analysis/2_Beganovic_2023/DNA_reads/short_reads/SRR24413065_1.fastq.gz"
-READ2="/proj/uppmax2025-3-3/Genome_Analysis/2_Beganovic_2023/DNA_reads/short_reads/SRR24413065_2.fastq.gz"
-BAM="$WORKDIR/HP126_to_own.sorted.bam"
+WORKDIR="/home/antonh/Genome-Analysis/analyses/polishing/R7"
+ASSEMBLY="/home/antonh/Genome-Analysis/analyses/genome_assembly/R7/assembly.fasta"
+READ1="/proj/uppmax2025-3-3/Genome_Analysis/2_Beganovic_2023/DNA_reads/short_reads/SRR24413071_1.fastq.gz"
+READ2="/proj/uppmax2025-3-3/Genome_Analysis/2_Beganovic_2023/DNA_reads/short_reads/SRR24413071_2.fastq.gz"
+BAM="$WORKDIR/R7.sorted.bam"
 
 mkdir -p "$WORKDIR"
 
 bwa index "$ASSEMBLY"
 
-bwa mem -t 2 "$ASSEMBLY" "$READ1" "$READ2" > "$WORKDIR/HP126_to_own.sam"
+bwa mem -t 2 "$ASSEMBLY" "$READ1" "$READ2" > "$WORKDIR/R7.sam"
 
-samtools view -Sb "$WORKDIR/HP126_to_own.sam" | samtools sort -o "$BAM"
+samtools view -Sb "$WORKDIR/R7.sam" | samtools sort -o "$BAM"
 samtools index "$BAM"
 
 java -Xmx16G -jar $PILON_HOME/pilon.jar \
   --genome "$ASSEMBLY" \
   --frags "$BAM" \
-  --output "HP126_pilon_polished" \
+  --output "R7_pilon_polished" \
   --tracks \
   --vcf \
   --fix all \
@@ -44,6 +44,6 @@ java -Xmx16G -jar $PILON_HOME/pilon.jar \
   --outdir "$WORKDIR"
 
 
-rm "$WORKDIR/HP126_to_own.sam"
+rm "$WORKDIR/R7.sam"
 
 
