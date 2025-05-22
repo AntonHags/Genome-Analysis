@@ -1,0 +1,152 @@
+install.packages("tidyverse")
+install.packages("pheatmap")
+BiocManager::install("DESeq2")
+BiocManager::install("apeglm")
+BiocManager::install("EnhancedVolcano")
+
+library(DESeq2)
+library(tidyverse)
+library(pheatmap)
+library(ggplot2)
+library(RColorBrewer)
+library(EnhancedVolcano)
+
+#Featurecounts result
+counts_path <- "C:/Users/anton/OneDrive - Uppsala universitet/Desktop/Bioinformatics/Genome Analysis Project/R7_counts.txt"
+
+df <- read.delim(counts_path, comment.char = "#", check.names = FALSE)
+
+# Only keeping Geneid and counts
+count_data <- df %>%
+  select(Geneid, matches("\\.bam$")) %>%
+  rename_with(~ make.names(basename(.x)), -1) %>%  # clean column names
+  column_to_rownames("Geneid")
+
+# Converting to integer matrix
+count_matrix <- as.matrix(count_data)
+stopifnot(all(apply(count_matrix, 2, is.numeric)))
+
+colData <- data.frame(
+  row.names = colnames(count_matrix),
+  condition = factor(c(rep("HP126", 3), rep("R7", 3)))
+)
+
+dds <- DESeqDataSetFromMatrix(
+  countData = count_matrix,
+  colData = colData,
+  design = ~ condition
+)
+
+# Filtering out teh low-count genes
+dds <- dds[rowSums(counts(dds)) >= 10, ]
+
+dds <- DESeq(dds)
+
+res <- results(dds, contrast = c("condition", "HP126", "R7"))
+res <- lfcShrink(dds, coef = "condition_R7_vs_HP126", type = "apeglm")  # shrink log2 fold changes
+
+resultsNames(dds)
+
+summary(res)
+
+write.csv(as.data.frame(res), "DESeq2_HP126_vs_R7_results.csv")
+
+#Adding annotations for genes with gff file
+gff_path <- "C:/Users/anton/OneDrive - Uppsala universitet/Desktop/Bioinformatics/Genome Analysis Project/R7.gff" 
+
+gff <- read.delim(gff_path, comment.char = "#", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+
+# Only keep rows for CDS features 
+gff_cds <- gff[gff$V3 == "CDS", ]
+
+# Extract key annotations from the attributes column (column 9)
+gff_annotations <- gff_cds %>%
+  select(V9) %>%
+  mutate(
+    locus_tag = str_extract(V9, "locus_tag=([^;]+)") %>% str_remove("locus_tag="),
+    product = str_extract(V9, "product=([^;]+)") %>% str_remove("product="),
+    gene = str_extract(V9, "gene=([^;]+)") %>% str_remove("gene="),
+    ec_number = str_extract(V9, "eC_number=([^;]+)") %>% str_remove("eC_number=")
+  ) %>%
+  distinct(locus_tag, .keep_all = TRUE) 
+
+# One row per locus_tag
+gff_lookup <- gff_annotations %>%
+  select(locus_tag, product, gene, ec_number)
+
+res_df <- as.data.frame(res) %>%
+  rownames_to_column("locus_tag")  # assuming gene names are row names
+
+res_annotated <- res_df %>%
+  left_join(gff_lookup, by = "locus_tag")
+
+res_annotated_filtered <- res_annotated %>%
+  filter(!is.na(product), !grepl("hypothetical", product, ignore.case = TRUE)) %>%
+  arrange(padj)
+
+# Filtering to top N significant genes for labeling
+top_labeled_genes <- res_annotated_filtered %>%
+  filter(padj < 0.01 & abs(log2FoldChange) > 2) %>%
+  arrange(padj) %>%
+  slice(1:20)
+
+#Volcano plot
+ggplot(res_annotated_filtered, aes(x = log2FoldChange, y = -log10(padj))) +
+  geom_point(alpha = 0.5) +
+  geom_text_repel(
+    data = top_labeled_genes,
+    aes(label = product),
+    size = 3,
+    max.overlaps = 20,
+    box.padding = 0.4,
+    point.padding = 0.3,
+    segment.color = "grey50"
+  ) +
+  labs(
+    title = "Most Significant DE Genes: HP126 vs R7",
+    x = "Log2 Fold Change",
+    y = "-log10 Adjusted p-value"
+  ) +
+  theme_minimal()
+
+
+#PCA plot
+pca_plot <- plotPCA(vsd, intgroup = "condition") +
+  ggtitle("PCA Plot: HP126 vs R7") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(hjust = 0.5, face = "bold"),
+    legend.position = "right"
+  )
+
+pca_plot
+
+# Get top 50 most significant genes by adjusted p-value
+top50_genes <- res_annotated %>%
+  filter(!is.na(padj), padj < 0.05) %>%
+  arrange(padj) %>%
+  slice(1:50) %>%
+  pull(locus_tag)
+
+# Extract expression matrix from vst-transformed data
+mat <- assay(vsd)[top50_genes, ]
+mat <- mat - rowMeans(mat)  # center each gene
+
+# Replace rownames with product names from GFF 
+gene_labels <- gff_lookup$product[match(rownames(mat), gff_lookup$locus_tag)]
+rownames(mat) <- ifelse(is.na(gene_labels), rownames(mat), gene_labels)
+
+# Sample annotation
+annotation_col <- data.frame(
+  Condition = colData$condition
+)
+rownames(annotation_col) <- colnames(mat)
+
+pheatmap(mat,
+         annotation_col = annotation_col,
+         cluster_rows = TRUE,
+         cluster_cols = TRUE,
+         scale = "row",
+         fontsize = 8,
+         show_rownames = TRUE,
+         main = "Top 50 DE Genes: HP126 vs R7")
